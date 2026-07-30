@@ -118,27 +118,15 @@ git config --global user.email "a.m.majidi.62@gmoil.com"
 
 ## Step 4 — Verify Tool Versions
 
-Yocto requires minimum versions for several tools:
+> **Status: DONE** — All tools verified on 2026-07-30.
 
-| Tool | Minimum Version |
-|---|---|
-| Git | 1.8.3.1 |
-| tar | 1.28 |
-| Python | 3.9.0 |
-| gcc | 10.1 |
-| GNU make | 4.0 |
-
-Check your versions:
-
-```bash
-git --version
-tar --version
-python3 --version
-gcc --version
-make --version
-```
-
-Ubuntu 24.04 ships versions that satisfy all requirements.
+| Tool | Minimum Required | Installed | Status |
+|---|---|---|---|
+| Git | 1.8.3.1 | **2.43.0** | ✅ |
+| tar | 1.28 | **1.35** | ✅ |
+| Python | 3.9.0 | **3.12.3** | ✅ |
+| gcc | 10.1 | **13.3.0** | ✅ |
+| GNU make | 4.0 | **4.3** | ✅ |
 
 ---
 
