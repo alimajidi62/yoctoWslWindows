@@ -42,16 +42,48 @@ wsl
 
 ## Step 1 — Install Required Host Packages
 
-Open an Ubuntu WSL2 terminal and run:
+> **Status: DONE** — All packages were installed on 2026-07-30 inside `Ubuntu-24.04` (WSL2).
 
-```bash
-sudo apt-get update
-sudo apt-get install -y \
-  build-essential chrpath cpio debianutils diffstat file gawk gcc git \
+The following command was run from PowerShell:
+
+```powershell
+wsl -- sudo apt-get update
+wsl -- sudo apt-get install -y build-essential chrpath cpio debianutils diffstat file gawk gcc git \
   iputils-ping libacl1 libcrypt-dev locales python3 python3-git \
   python3-jinja2 python3-pexpect python3-pip python3-subunit python3-websockets \
   socat texinfo unzip wget xz-utils zstd
 ```
+
+### Verified Installed Packages
+
+| Package | Installed Version | Status |
+|---|---|---|
+| `build-essential` | 12.10ubuntu1 | ✅ |
+| `chrpath` | 0.16-2build1 | ✅ |
+| `cpio` | 2.15+dfsg-1ubuntu2 | ✅ |
+| `gawk` | 5.2.1-2ubuntu0.1 | ✅ |
+| `gcc` | 13.2.0 (v13) | ✅ |
+| `git` | 2.43.0-1ubuntu7.3 | ✅ |
+| `python3` | 3.12.3-0ubuntu2.1 | ✅ |
+| `python3-git` | 3.1.37-3 | ✅ |
+| `python3-jinja2` | 3.1.2-1ubuntu1.3 | ✅ |
+| `python3-pexpect` | 4.9-2 | ✅ |
+| `python3-websockets` | 10.4-1 | ✅ |
+| `socat` | 1.8.0.0-4ubuntu0.1 | ✅ |
+| `texinfo` | 7.1-3build2 | ✅ |
+| `zstd` | 1.5.5+dfsg2-2build1.1 | ✅ |
+
+All versions exceed the Yocto Project minimum requirements.
+
+### WSL2 Storage Location
+
+The Ubuntu-24.04 virtual disk (`ext4.vhdx`) is stored at:
+
+```
+C:\Users\220666118\AppData\Local\wsl\{44a99a32-e46e-4815-9c1a-881d2176880c}\ext4.vhdx
+```
+
+Keep all Yocto build files **inside the WSL filesystem** (e.g. `~/yocto/`), not under `/mnt/c/`.
 
 ---
 
