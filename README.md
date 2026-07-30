@@ -132,34 +132,40 @@ git config --global user.email "a.m.majidi.62@gmoil.com"
 
 ## Step 5 — Get Poky (Yocto Reference Distribution)
 
-### Option A — Using bitbake-setup (Recommended, modern approach)
+> **Status: DONE (partial)** — `bitbake` cloned on 2026-07-30. `bitbake-setup init` pending.
+
+> **Note:** Corporate Zscaler SSL proxy required adding the Zscaler Root CA to Ubuntu's
+> trust store before git could connect. Done via:
+> ```bash
+> sudo cp /tmp/zscaler-root.crt /usr/local/share/ca-certificates/zscaler-root.crt
+> sudo update-ca-certificates
+> ```
+
+### Cloned (Done)
 
 ```bash
-# Clone the bitbake tool
+cd ~
 git clone https://git.openembedded.org/bitbake
+# Result: /home/ali/bitbake/bin/bitbake-setup  ✅
+```
 
-# Initialize a Poky build environment interactively
+### Next — Initialize Poky Build Environment
+
+```bash
+cd ~
 ./bitbake/bin/bitbake-setup init
 ```
 
 When prompted, select:
-1. **Configuration** → `poky-master` (or a numbered release like `poky-scarthgap`)
+1. **Configuration** → `poky-master`
 2. **BitBake config** → `poky`
 3. **Machine** → e.g. `qemux86-64` (QEMU) or your target board
 4. **Distro** → `poky`
 
-For a non-interactive setup:
+Or non-interactively:
 
 ```bash
 ./bitbake/bin/bitbake-setup init --non-interactive poky-master poky distro/poky machine/qemux86-64
-```
-
-### Option B — Manual Poky Clone (Classic approach)
-
-```bash
-git clone -b scarthgap https://git.yoctoproject.org/poky
-cd poky
-source oe-init-build-env build
 ```
 
 ---
