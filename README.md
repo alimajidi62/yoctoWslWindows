@@ -89,26 +89,29 @@ Keep all Yocto build files **inside the WSL filesystem** (e.g. `~/yocto/`), not 
 
 ## Step 2 — Configure Locale
 
-Yocto requires the `en_US.UTF-8` locale. Check if it is already enabled:
+> **Status: DONE** — `en_US.UTF-8` locale enabled on 2026-07-30.
 
 ```bash
-locale --all-locales | grep en_US.utf8
+echo 'en_US.UTF-8 UTF-8' | sudo tee -a /etc/locale.gen
+sudo locale-gen
+# Output: en_US.UTF-8... done
 ```
 
-If nothing is returned, enable it:
-
+Verified with:
 ```bash
-echo "en_US.UTF-8 UTF-8" | sudo tee -a /etc/locale.gen
-sudo locale-gen
+locale --all-locales | grep en_US.utf8
+# Output: en_US.utf8
 ```
 
 ---
 
 ## Step 3 — Configure Git
 
+> **Status: DONE** — Git configured on 2026-07-30.
+
 ```bash
-git config --global user.name  "Your Name"
-git config --global user.email "your.email@example.com"
+git config --global user.name  "ali majidi"
+git config --global user.email "a.m.majidi.62@gmoil.com"
 ```
 
 ---
