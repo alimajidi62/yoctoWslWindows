@@ -130,58 +130,62 @@ git config --global user.email "a.m.majidi.62@gmoil.com"
 
 ---
 
-## Step 5 — Get Poky (Yocto Reference Distribution)
+## Step 5 — Get Poky + Raspberry Pi 4 BSP
 
-> **Status: DONE (partial)** — `bitbake` cloned on 2026-07-30. `bitbake-setup init` pending.
+> **Status: DONE** — Completed on 2026-07-30.
 
-> **Note:** Corporate Zscaler SSL proxy required adding the Zscaler Root CA to Ubuntu's
-> trust store before git could connect. Done via:
-> ```bash
-> sudo cp /tmp/zscaler-root.crt /usr/local/share/ca-certificates/zscaler-root.crt
-> sudo update-ca-certificates
-> ```
-
-### Cloned (Done)
+### 5a — Clone bitbake and init Poky
 
 ```bash
 cd ~
 git clone https://git.openembedded.org/bitbake
-# Result: /home/ali/bitbake/bin/bitbake-setup  ✅
-```
-
-### Next — Initialize Poky Build Environment
-
-```bash
-cd ~
-./bitbake/bin/bitbake-setup init
-```
-
-When prompted, select:
-1. **Configuration** → `poky-master`
-2. **BitBake config** → `poky`
-3. **Machine** → e.g. `qemux86-64` (QEMU) or your target board
-4. **Distro** → `poky`
-
-Or non-interactively:
-
-```bash
 ./bitbake/bin/bitbake-setup init --non-interactive poky-master poky distro/poky machine/qemux86-64
 ```
+
+Build directory: `/home/ali/bitbake-builds/poky-master/build`
+
+### 5b — Add meta-raspberrypi BSP layer
+
+```bash
+git clone -b master https://git.yoctoproject.org/meta-raspberrypi \
+  /home/ali/bitbake-builds/poky-master/layers/meta-raspberrypi
+
+cd /home/ali/bitbake-builds/poky-master/build
+source init-build-env
+bitbake-layers add-layer ../layers/meta-raspberrypi
+```
+
+### 5c — Switch target machine to Raspberry Pi 4 (64-bit)
+
+```bash
+bitbake-config-build enable-fragment machine/raspberrypi4-64
+```
+
+### 5d — Accept Synaptics non-free firmware license
+
+Added to `conf/local.conf`:
+```
+LICENSE_FLAGS_ACCEPTED = "synaptics-killswitch"
+```
+
+### Active Configuration (verified)
+
+| Setting | Value |
+|---|---|
+| DISTRO | `poky` |
+| MACHINE | `raspberrypi4-64` ✅ |
+| BSP layer | `meta-raspberrypi` ✅ |
+| License | `synaptics-killswitch` accepted ✅ |
 
 ---
 
 ## Step 6 — Initialize the Build Environment
 
+> **Status: DONE** — Environment sourced as part of Step 5.
+
 ```bash
-# If using bitbake-setup:
-source poky-master/build/init-build-env
-
-# If using manual clone:
-source oe-init-build-env build
+source /home/ali/bitbake-builds/poky-master/build/init-build-env
 ```
-
-This drops you into the `build/` directory with all BitBake environment
-variables set.
 
 ---
 
