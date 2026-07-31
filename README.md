@@ -202,13 +202,22 @@ bitbake-config-build enable-fragment core/yocto/sstate-mirror-cdn
 ## Step 8 — Build an Image
 
 ```bash
-# Build the full Sato reference image (takes 1–6 hours on first run)
+# Build the full Sato reference image (takes 1–6 hours on first run) 
 bitbake core-image-sato
 
 # Or a minimal image for faster testing:
 bitbake core-image-minimal
 ```
-
+Monitor progress while it runs
+Open a second WSL terminal and run:
+```bash
+tail -f ~/yocto-build.log
+```
+Or check progress live:
+```bash
+# See what tasks are currently running
+cat ~/yocto-build.log | grep "^NOTE: Running task"
+```
 ---
 
 ## Step 9 — Run the Image in QEMU
