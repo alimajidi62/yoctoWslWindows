@@ -231,14 +231,39 @@ OEQA_BUILDPATHS_SKIP = "/home/ali"
 
 After adding the fix, resume with `bitbake core-image-minimal` — all previously completed tasks are cached and will not re-run.
 
-### Output Images
+### Build Output — Raspberry Pi 4 (64-bit)
+
+Build completed **2026-07-31** — 4076 tasks, 0 errors.
 
 ```
 ~/bitbake-builds/poky-master/build/tmp/deploy/images/raspberrypi4-64/
-├── core-image-minimal-raspberrypi4-64.rootfs.wic.bz2   ← flash this to SD card
-├── core-image-minimal-raspberrypi4-64.rootfs.tar.gz    ← rootfs archive
-└── Image                                                ← kernel image
 ```
+
+| File | Size | Purpose |
+|---|---|---|
+| `core-image-minimal-raspberrypi4-64.rootfs-*.wic.bz2` | 29 MB | **Flash this to SD card** |
+| `core-image-minimal-raspberrypi4-64.rootfs-*.wic.bmap` | 3 KB | Block map for fast flashing with `bmaptool` |
+| `core-image-minimal-raspberrypi4-64.rootfs-*.ext3` | 28 MB | Raw ext3 rootfs partition |
+| `Image-*-raspberrypi4-64-*.bin` | 26 MB | Kernel image |
+| `bcm2711-rpi-4-b.dtb` | 56 KB | Device Tree for RPi 4B |
+| `bcm2711-rpi-cm4.dtb` | 56 KB | Device Tree for Compute Module 4 |
+| `*.dtbo` | various | Device Tree overlays |
+
+### Flash to SD Card
+
+From Linux/WSL:
+```bash
+# Decompress first
+bzip2 -d core-image-minimal-raspberrypi4-64.rootfs-*.wic.bz2
+
+# Flash (replace /dev/sdX with your SD card)
+sudo dd if=core-image-minimal-raspberrypi4-64.rootfs-*.wic of=/dev/sdX bs=4M status=progress
+
+# Or faster with bmaptool:
+sudo bmaptool copy core-image-minimal-raspberrypi4-64.rootfs-*.wic.bz2 /dev/sdX
+```
+
+From Windows, use **Raspberry Pi Imager** or **balenaEtcher** and point it at the `.wic.bz2` file.
 ---
 
 ## Step 9 — Run the Image in QEMU
