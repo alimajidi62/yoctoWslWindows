@@ -80,7 +80,7 @@ All versions exceed the Yocto Project minimum requirements.
 The Ubuntu-24.04 virtual disk (`ext4.vhdx`) is stored at:
 
 ```
-C:\Users\220666118\AppData\Local\wsl\{44a99a32-e46e-4815-9c1a-881d2176880c}\ext4.vhdx
+C:\Users\###\AppData\Local\wsl\{###}\ext4.vhdx
 ```
 
 Keep all Yocto build files **inside the WSL filesystem** (e.g. `~/yocto/`), not under `/mnt/c/`.
@@ -110,8 +110,8 @@ locale --all-locales | grep en_US.utf8
 > **Status: DONE** — Git configured on 2026-07-30.
 
 ```bash
-git config --global user.name  "ali majidi"
-git config --global user.email "a.m.majidi.62@gmoil.com"
+git config --global user.name  "### ###"
+git config --global user.email "###@###.com"
 ```
 
 ---
@@ -142,15 +142,15 @@ git clone https://git.openembedded.org/bitbake
 ./bitbake/bin/bitbake-setup init --non-interactive poky-master poky distro/poky machine/qemux86-64
 ```
 
-Build directory: `/home/ali/bitbake-builds/poky-master/build`
+Build directory: `/home/###/bitbake-builds/poky-master/build`
 
 ### 5b — Add meta-raspberrypi BSP layer
 
 ```bash
 git clone -b master https://git.yoctoproject.org/meta-raspberrypi \
-  /home/ali/bitbake-builds/poky-master/layers/meta-raspberrypi
+  /home/###/bitbake-builds/poky-master/layers/meta-raspberrypi
 
-cd /home/ali/bitbake-builds/poky-master/build
+cd /home/###/bitbake-builds/poky-master/build
 source init-build-env
 bitbake-layers add-layer ../layers/meta-raspberrypi
 ```
@@ -184,7 +184,7 @@ LICENSE_FLAGS_ACCEPTED = "synaptics-killswitch"
 > **Status: DONE** — Environment sourced as part of Step 5.
 
 ```bash
-source /home/ali/bitbake-builds/poky-master/build/init-build-env
+source /home/###/bitbake-builds/poky-master/build/init-build-env
 ```
 
 ---
@@ -204,7 +204,7 @@ bitbake-config-build enable-fragment core/yocto/sstate-mirror-cdn
 > **Status: DONE** — `core-image-minimal` built successfully on 2026-07-31 (4022 tasks).
 
 ```bash
-cd /home/ali/bitbake-builds/poky-master/build
+cd /home/###/bitbake-builds/poky-master/build
 source init-build-env
 bitbake core-image-minimal 2>&1 | tee ~/yocto-build.log
 ```
@@ -222,11 +222,11 @@ ERROR: sed-4.10-r0 do_package_qa: QA Issue: File /usr/share/info/sed.info
 contains a reference to the build host HOME directory.
 ```
 
-**Cause:** `sed`'s upstream documentation contains the string `/home/ali` as a literal example — it matches the WSL username by coincidence. Not a real host-path leak.
+**Cause:** `sed`'s upstream documentation contains the string `/home/###` as a literal example — it matches the WSL username by coincidence. Not a real host-path leak.
 
 **Fix** — add to `conf/local.conf` before building:
 ```bitbake
-OEQA_BUILDPATHS_SKIP = "/home/ali"
+OEQA_BUILDPATHS_SKIP = "/home/###"
 ```
 
 After adding the fix, resume with `bitbake core-image-minimal` — all previously completed tasks are cached and will not re-run.
@@ -423,11 +423,11 @@ source oe-init-build-env build-jetson-nano
 
 # 4 — Register layers
 bitbake-layers add-layer \
-  /home/ali/bitbake-builds/poky-kirkstone/layers/meta-openembedded/meta-oe \
-  /home/ali/bitbake-builds/poky-kirkstone/layers/meta-openembedded/meta-python \
-  /home/ali/bitbake-builds/poky-kirkstone/layers/meta-openembedded/meta-networking \
-  /home/ali/bitbake-builds/poky-kirkstone/layers/meta-openembedded/meta-filesystems \
-  /home/ali/bitbake-builds/poky-kirkstone/layers/meta-tegra
+  /home/###/bitbake-builds/poky-kirkstone/layers/meta-openembedded/meta-oe \
+  /home/###/bitbake-builds/poky-kirkstone/layers/meta-openembedded/meta-python \
+  /home/###/bitbake-builds/poky-kirkstone/layers/meta-openembedded/meta-networking \
+  /home/###/bitbake-builds/poky-kirkstone/layers/meta-openembedded/meta-filesystems \
+  /home/###/bitbake-builds/poky-kirkstone/layers/meta-tegra
 ```
 
 ### local.conf Settings
@@ -436,8 +436,19 @@ bitbake-layers add-layer \
 MACHINE = "jetson-nano-devkit"
 IMAGE_CLASSES += "image_types_tegra"
 LICENSE_FLAGS_ACCEPTED = "commercial"
-OEQA_BUILDPATHS_SKIP = "/home/ali"
+OEQA_BUILDPATHS_SKIP = "/home/###"
+IMAGE_INSTALL:append = " openssh openssh-sshd openssh-sftp-server"
+EXTRA_IMAGE_FEATURES += "ssh-server-openssh debug-tweaks"
+
+# CRITICAL: override the machine conf's partition variable so CBoot gets a
+# literal device path — CBoot does not expand ${distro_bootpart} like U-Boot does.
+KERNEL_ROOTSPEC_DEFAULT:forcevariable = "mmcblk0p1"
 ```
+
+> **Why `:forcevariable`?** In Yocto, `local.conf` is parsed *before* machine
+> conf. A plain `=` in local.conf is overwritten by a later `=` in
+> `jetson-nano-devkit.conf`. The `:forcevariable` override has the highest
+> priority and cannot be overwritten by any other conf file.
 
 ### Extra Package Required
 
@@ -449,7 +460,7 @@ sudo apt-get install -y liblz4-tool
 ### Build Command
 
 > **Status: DONE** — Built on 2026-07-31, 3598 tasks, 0 errors.
-> OpenSSH 8.9p1 included for headless SSH access.
+> OpenSSH 8.9p1 included. Boot root device fix applied.
 
 ```bash
 cd ~/bitbake-builds/poky-kirkstone
@@ -465,59 +476,174 @@ bitbake core-image-minimal 2>&1 | tee ~/yocto-jetson-build.log
 
 ```
 ~/bitbake-builds/poky-kirkstone/build-jetson-nano/tmp/deploy/images/jetson-nano-devkit/
-├── core-image-minimal-jetson-nano-devkit-*.tegraflash.tar.gz  ← SD card image (44 MB)
+├── core-image-minimal-jetson-nano-devkit-*.tegraflash.tar.gz  ← flash package (44 MB)
+├── core-image-minimal-jetson-nano-devkit-*.rootfs.ext4        ← rootfs image
+├── extlinux.conf                                              ← boot config (verify this!)
 ├── Image--4.9.337+git*-jetson-nano-devkit-*.bin               ← kernel (37 MB)
 ├── tegra210-p3448-0000-p3449-0000-a02-*.dtb                   ← DTB for Nano A02
 └── tegra210-p3448-0000-p3449-0000-b00-*.dtb                   ← DTB for Nano B01 ← yours
 ```
 
-Copied to Windows repo: `images/jetson-nano/core-image-minimal-jetson-nano-devkit-*.tegraflash.tar.gz`
+### Verify extlinux.conf Before Flashing
 
-### Flash to SD Card (from WSL)
+Always confirm the APPEND line contains a literal partition number, not `${distro_bootpart}`:
 
 ```bash
-cd ~/bitbake-builds/poky-kirkstone/build-jetson-nano/tmp/deploy/images/jetson-nano-devkit/
-
-# Extract the flash package
-tar xzf core-image-minimal-jetson-nano-devkit-*.tegraflash.tar.gz
-cd tegraflash/
-
-# Create the SD card image
-sudo ./dosdcard.sh
-
-# Flash (replace sdX with your SD card — check with lsblk first)
-sudo dd if=core-image-minimal-jetson-nano-devkit.sdcard of=/dev/sdX bs=4M status=progress conv=fsync
+cat ~/bitbake-builds/poky-kirkstone/build-jetson-nano/tmp/deploy/images/jetson-nano-devkit/extlinux.conf
+# Expected:
+# APPEND ${cbootargs} root=/dev/mmcblk0p1 rw rootwait ${bootargs}
+#                                       ^^— must be "1", not "${distro_bootpart}"
 ```
 
-Or use **balenaEtcher** on Windows — extract the `.tar.gz`, then flash the `.sdcard` file.
+If it still shows `${distro_bootpart}`, the `u-boot-tegra` recipe was cached.
+Force a rebuild:
+
+```bash
+source oe-init-build-env build-jetson-nano
+bitbake u-boot-tegra -c cleansstate
+bitbake core-image-minimal
+```
+
+### Create the SD Card Image
+
+```bash
+# Extract the tegraflash package into a working directory
+mkdir -p ~/jetson-flash
+tar xzf ~/bitbake-builds/poky-kirkstone/build-jetson-nano/tmp/deploy/images/jetson-nano-devkit/core-image-minimal-jetson-nano-devkit-*.tegraflash.tar.gz \
+  -C ~/jetson-flash
+
+# Generate the .sdcard image (writes ext4 rootfs into a GPT disk image)
+cd ~/jetson-flash
+bash dosdcard.sh
+# Output: core-image-minimal.sdcard (~15 GB)
+
+# Copy to Windows for flashing
+cp ~/jetson-flash/core-image-minimal.sdcard \
+  /mnt/c/dev/Green/linuxVM/yoctoWslWindows/images/jetson-nano/core-image-minimal.sdcard
+```
+
+### Flash to SD Card (Windows — admin PowerShell)
+
+`wsl --mount` is blocked by company policy, so flashing is done directly from
+Windows using the .NET FileStream API. Run in **admin PowerShell**:
+
+```powershell
+# Check disk number first — Disk 1 should be your SD card (~29.7 GB, Realtek PCIE CardReader)
+Get-Disk | Select-Object Number, FriendlyName, Size, BusType
+
+Set-Disk -Number 1 -IsOffline $true
+$src = [System.IO.File]::OpenRead("C:\dev\Green\linuxVM\yoctoWslWindows\images\jetson-nano\core-image-minimal.sdcard")
+$dst = [System.IO.File]::Open("\\.\PhysicalDrive1", [System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+$buf = New-Object byte[] 4194304
+$written = 0
+while (($read = $src.Read($buf, 0, $buf.Length)) -gt 0) {
+    $dst.Write($buf, 0, $read)
+    $written += $read
+    Write-Host -NoNewline "`rWritten: $([math]::Round($written/1GB,2)) GB   "
+}
+$dst.Flush(); $dst.Close(); $src.Close()
+Set-Disk -Number 1 -IsOffline $false
+Write-Host "`nDone - SD card ready"
+```
+
+This writes ~14.75 GB at ~150 MB/s. Takes about 2 minutes.
 
 > **Note:** The Jetson Nano uses NVIDIA's CBoot bootloader stored in the module's
-> internal flash. The SD card only holds the kernel and rootfs — no bootloader
-> flashing needed.
+> internal eMMC. The SD card only holds the kernel and rootfs (single GPT
+> partition `APP` = `/dev/mmcblk0p1`). No bootloader flashing is needed.
 
 ### SD Card Slot Location
 
 The microSD slot is on the **underside** of the carrier board, directly below
-the Jetson module. Insert the 32 GB SanDisk card with the contacts facing the
-board (label facing down).
+the Jetson module. Insert the card with contacts facing the board (label facing down).
 
-### Headless SSH Access (no monitor/keyboard needed)
+### Boot Sequence
 
-The image includes **OpenSSH 8.9p1**. After booting:
+```
+Power on
+    │
+    ▼
+CBoot (NVIDIA bootloader in internal eMMC)
+    │  reads /boot/extlinux/extlinux.conf from SD card APP partition
+    │  expands ${cbootargs} → hardware-specific params (tegraid, ddr, etc.)
+    │  passes root=/dev/mmcblk0p1 to kernel
+    ▼
+Linux kernel 4.9.337-l4t-r32.7.6 (aarch64)
+    │
+    ▼
+EXT4-fs mounts /dev/mmcblk0p1 as rootfs
+    │
+    ▼
+Yocto rootfs — login: root / password: (none)
+```
 
-1. Connect the Jetson Nano's Ethernet port to your router/switch
-2. Find the board's IP address from your router's DHCP table, or use:
-   ```bash
-   # From your PC on the same network
-   arp -a | grep -i nvidia
-   # Or scan the network:
-   nmap -sn 192.168.1.0/24
+### Boot Troubleshooting — Root Mount Failure
+
+**Symptom:** Board shows CBoot output on HDMI then goes to boot loop. Kernel
+panics with `VFS: Unable to mount root fs`.
+
+**Root cause:** `meta-tegra` kirkstone generates `extlinux.conf` with:
+```
+APPEND ${cbootargs} root=/dev/mmcblk0p${distro_bootpart} ...
+```
+CBoot only expands `${cbootargs}`. It does **not** expand `${distro_bootpart}`
+(a U-Boot environment variable). The kernel receives `root=/dev/mmcblk0p` with
+no partition number — mount fails.
+
+**Fix:** Add to `local.conf`:
+```bitbake
+KERNEL_ROOTSPEC_DEFAULT:forcevariable = "mmcblk0p1"
+```
+Then force-rebuild the recipe that generates extlinux.conf and reflash.
+
+### Headless SSH Access
+
+The image includes **OpenSSH 8.9p1** with `debug-tweaks` (no root password).
+
+1. Connect Ethernet to your router (192.168.0.x network)
+2. Power on — board gets DHCP. Previous lease: `192.168.0.204`
+3. Find IP from Windows:
+   ```powershell
+   # Quick ARP scan
+   1..254 | ForEach-Object { $null = ping -n 1 -w 300 "192.168.0.$_" }
+   arp -a | Select-String "dynamic"
    ```
-3. SSH in:
-   ```bash
-   ssh root@<jetson-ip>    # no password (debug-tweaks enabled)
+4. SSH in:
+   ```powershell
+   ssh root@192.168.0.204    # no password
    ```
-   On Windows, use **PuTTY** or Windows Terminal's built-in SSH.
+
+### Installing Python 3 (live, no reflash)
+
+The minimal image has no package manager. Install a standalone Python binary:
+
+```bash
+# On the Windows/WSL host — download and SCP to board
+wsl -- bash -c "wget -q -O ~/python3.tar.gz \
+  https://github.com/indygreg/python-build-standalone/releases/download/20241016/cpython-3.12.7+20241016-aarch64-unknown-linux-gnu-install_only.tar.gz \
+  && scp ~/python3.tar.gz root@192.168.0.204:/opt/"
+
+# On the board (via SSH) — extract and symlink
+ssh root@192.168.0.204 "cd /opt && tar xzf python3.tar.gz && rm python3.tar.gz"
+ssh root@192.168.0.204 "ln -sf /opt/python/bin/python3 /usr/bin/python3 \
+  && ln -sf /opt/python/bin/python3.12 /usr/bin/python3.12 \
+  && ln -sf /opt/python/bin/pip3 /usr/bin/pip3"
+
+# Verify
+ssh root@192.168.0.204 "python3 --version && pip3 --version"
+# Python 3.12.7
+# pip 24.1.2
+```
+
+Files survive reboot — stored on the SD card's ext4 rootfs at `/opt/python/`.
+
+### Installing Packages on a Minimal Yocto Image
+
+| Method | How | When to use |
+|---|---|---|
+| Bake into image | Add to `IMAGE_INSTALL:append` in `local.conf`, rebuild + reflash | Production / permanent |
+| opkg (live) | Add `EXTRA_IMAGE_FEATURES += "package-management"` + rebuild once; then `opkg install <pkg>` on board | Development iteration |
+| SCP binary | Build/download on host, copy with `scp` | One-off, no reflash |
 
 ---
 
@@ -535,14 +661,29 @@ The image includes **OpenSSH 8.9p1**. After booting:
 
 ## Disk Space Tips
 
-To conserve disk space during or after a build:
+Yocto builds are large. After a successful build the biggest consumer is `tmp/work`:
+
+```
+tmp/work      ~42 GB   ← safe to delete after build (sources + intermediate artifacts)
+sstate-cache  ~4 GB    ← keep (future rebuilds use this instead of recompiling)
+tmp/deploy    ~2.5 GB  ← keep (your final images)
+tmp/cache     ~244 MB  ← keep (dependency cache)
+```
 
 ```bash
-# Remove work directories after a successful build
-bitbake -c cleanall <recipe-name>
+# Delete work dirs after a successful build — sstate-cache means next rebuild is still fast
+rm -rf ~/bitbake-builds/poky-kirkstone/build-jetson-nano/tmp/work
 
-# Or set INHERIT in local.conf to auto-clean
+# Or auto-clean during builds (adds some overhead per-task)
 echo 'INHERIT += "rm_work"' >> conf/local.conf
+```
+
+The WSL2 `ext4.vhdx` grows but does not automatically shrink on Windows.
+To reclaim space on the Windows filesystem after cleanup, run in **admin PowerShell**:
+
+```powershell
+wsl --shutdown
+Optimize-VHD -Path "C:\Users\###\AppData\Local\wsl\{###}\ext4.vhdx" -Mode Full
 ```
 
 ---
