@@ -266,13 +266,116 @@ sudo bmaptool copy core-image-minimal-raspberrypi4-64.rootfs-*.wic.bz2 /dev/sdX
 From Windows, use **Raspberry Pi Imager** or **balenaEtcher** and point it at the `.wic.bz2` file.
 ---
 
-## Step 9 — Run the Image in QEMU
+## Step 9 — Flash and Run on Raspberry Pi 4
 
+### Hardware Required
+
+| Item | Notes |
+|---|---|
+| microSD card | 4 GB minimum, Class 10 / A1 recommended |
+| microSD USB reader | For your PC |
+| Raspberry Pi 4B | Any RAM variant |
+| USB-C power supply | 5V / 3A |
+| HDMI cable + monitor | **Or** USB-to-UART adapter (3.3V) for serial console |
+
+---
+
+### Flash the SD Card
+
+**Option A — balenaEtcher (easiest, Windows)**
+1. Download from [etcher.balena.io](https://etcher.balena.io)
+2. Flash from file → select `images/core-image-minimal-raspberrypi4-64.rootfs.wic.bz2`
+3. Select SD card → Flash (decompresses automatically)
+
+**Option B — Raspberry Pi Imager (Windows)**
+1. Download from [raspberrypi.com/software](https://www.raspberrypi.com/software/)
+2. Choose OS → **Use custom** → select the `.wic.bz2` file
+3. Select SD card → Write
+
+**Option C — WSL command line**
 ```bash
-runqemu snapshot
+# Find your SD card device first (check sizes carefully, NOT sda = system disk)
+lsblk
+
+# Flash (replace sdX with your SD card device)
+bzip2 -dc /mnt/c/dev/Green/linuxVM/yoctoWslWindows/images/core-image-minimal-raspberrypi4-64.rootfs.wic.bz2 \
+  | sudo dd of=/dev/sdX bs=4M status=progress conv=fsync
 ```
 
-Exit QEMU with `Ctrl-C` or the shutdown icon.
+---
+
+### What the WIC Image Contains
+
+The `.wic` image creates two partitions on the SD card automatically:
+
+```
+SD Card
+├── Partition 1 (FAT32, ~50 MB)  — Boot partition
+│   ├── start4.elf               — RPi GPU firmware (runs before kernel)
+│   ├── bcm2711-rpi-4-b.dtb      — Device Tree
+│   ├── Image                    — Linux kernel (6.18)
+│   └── config.txt               — Boot configuration
+└── Partition 2 (ext3, ~28 MB)   — Root filesystem
+    └── /bin /lib /etc /home ...  — Yocto rootfs
+```
+
+No separate bootloader programming step is needed — everything is included.
+
+---
+
+### First Boot
+
+1. Insert SD card into RPi4 (slot on underside of board)
+2. Connect HDMI **or** UART serial adapter
+3. Connect USB-C power — board boots immediately
+
+**Via HDMI + keyboard** — login prompt appears on screen:
+```
+raspberrypi4-64 login: root
+Password: (none — just press Enter)
+```
+
+**Via UART serial console** — connect a 3.3V USB-UART adapter to the GPIO header:
+
+```
+RPi 4 GPIO Header        USB-UART Adapter
+Pin 6  (GND)      ──────  GND
+Pin 8  (TX/GPIO14)──────  RX
+Pin 10 (RX/GPIO15)──────  TX
+                          (do NOT connect 5V/3.3V power pins)
+```
+
+Open in PuTTY on Windows: **Serial → COM port → 115200 baud**
+
+---
+
+### After Login
+
+```bash
+uname -a          # verify kernel version (should show aarch64 6.18.x)
+df -h             # check disk space
+ip addr           # check network interfaces
+```
+
+---
+
+### Boot Flow Summary
+
+```
+Power on
+    │
+    ▼
+RPi firmware (start4.elf) — reads SD card boot partition
+    │
+    ▼
+Linux kernel + Device Tree loaded
+    │
+    ▼
+Yocto rootfs mounted
+    │
+    ▼
+Login as root (no password)
+```
 
 ---
 
