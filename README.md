@@ -379,24 +379,105 @@ Login as root (no password)
 
 ---
 
-## Adding a BSP Layer for Real Hardware (Example: Raspberry Pi)
+## Jetson Nano Developer Kit Build (NVIDIA Tegra X1)
+
+> **Board:** NVIDIA Jetson Nano Developer Kit B01 (945-13450-0000-100)
+> **SD Card:** SanDisk Ultra 32 GB A1 microSD
+> **Build started:** 2026-07-31
+
+The original Jetson Nano uses the **Tegra X1 (T210)** SoC running L4T 32.7.x.
+This requires a separate Yocto stack (`kirkstone` release) because `meta-tegra` master
+only supports newer Orin-based Jetson boards.
+
+### Why a Separate Build Directory
+
+| | RPi4 build | Jetson Nano build |
+|---|---|---|
+| Poky branch | `master` | `kirkstone` |
+| meta-tegra branch | — | `kirkstone-l4t-r32.7.x` |
+| Build dir | `poky-master/build` | `poky-kirkstone/build-jetson-nano` |
+| Machine | `raspberrypi4-64` | `jetson-nano-devkit` |
+| Architecture | Cortex-A72 (aarch64) | Cortex-A57 (aarch64) |
+
+### Setup Steps Performed
 
 ```bash
-# Clone the BSP layer next to other layers
-git clone -b wrynose https://git.yoctoproject.org/meta-raspberrypi ../layers/meta-raspberrypi
+# 1 — Clone Poky kirkstone
+git clone -b kirkstone https://git.yoctoproject.org/poky \
+  ~/bitbake-builds/poky-kirkstone
 
-# Register it with BitBake
-bitbake-layers add-layer ../layers/meta-raspberrypi
+# 2 — Clone BSP layers on kirkstone
+git clone -b kirkstone \
+  https://github.com/openembedded/meta-openembedded \
+  ~/bitbake-builds/poky-kirkstone/layers/meta-openembedded
 
-# Switch the target machine
-bitbake-config-build enable-fragment machine/raspberrypi5
+git clone https://github.com/OE4T/meta-tegra \
+  ~/bitbake-builds/poky-kirkstone/layers/meta-tegra
+# then switch to the branch that supports the original Nano:
+git -C ~/bitbake-builds/poky-kirkstone/layers/meta-tegra \
+  checkout kirkstone-l4t-r32.7.x
 
-# Accept non-free Synaptics firmware license (required for RPi)
-echo 'LICENSE_FLAGS_ACCEPTED = "synaptics-killswitch"' >> conf/local.conf
+# 3 — Initialize build environment
+cd ~/bitbake-builds/poky-kirkstone
+source oe-init-build-env build-jetson-nano
 
-# Build
-bitbake core-image-sato
+# 4 — Register layers
+bitbake-layers add-layer \
+  /home/ali/bitbake-builds/poky-kirkstone/layers/meta-openembedded/meta-oe \
+  /home/ali/bitbake-builds/poky-kirkstone/layers/meta-openembedded/meta-python \
+  /home/ali/bitbake-builds/poky-kirkstone/layers/meta-openembedded/meta-networking \
+  /home/ali/bitbake-builds/poky-kirkstone/layers/meta-openembedded/meta-filesystems \
+  /home/ali/bitbake-builds/poky-kirkstone/layers/meta-tegra
 ```
+
+### local.conf Settings
+
+```bitbake
+MACHINE = "jetson-nano-devkit"
+IMAGE_CLASSES += "image_types_tegra"
+LICENSE_FLAGS_ACCEPTED = "commercial"
+OEQA_BUILDPATHS_SKIP = "/home/ali"
+```
+
+### Extra Package Required
+
+```bash
+# lz4c is needed by meta-tegra but not in the standard Yocto host requirements
+sudo apt-get install -y liblz4-tool
+```
+
+### Build Command
+
+```bash
+cd ~/bitbake-builds/poky-kirkstone
+source oe-init-build-env build-jetson-nano
+bitbake core-image-minimal 2>&1 | tee ~/yocto-jetson-build.log
+```
+
+### Flash to SD Card
+
+Flash the same way as the RPi4 — the WIC image contains everything:
+
+```bash
+# Output location (after build completes):
+~/bitbake-builds/poky-kirkstone/build-jetson-nano/tmp/deploy/images/jetson-nano-devkit/
+
+# Flash with balenaEtcher on Windows (select the .sdcard or .wic.bz2 file)
+# Or from WSL:
+bzip2 -dc core-image-minimal-jetson-nano-devkit.tegraflash.tar.bz2 | tar x
+sudo ./dosdcard.sh   # creates the SD card image
+sudo dd if=core-image-minimal-jetson-nano-devkit.sdcard of=/dev/sdX bs=4M status=progress
+```
+
+> **Note:** The Jetson Nano uses NVIDIA's CBoot bootloader stored in the module's
+> internal eMMC (16 MB). The SD card only holds the kernel and rootfs — the
+> bootloader is already on the module and does not need to be flashed.
+
+### Jetson Nano SD Card Slot Location
+
+The microSD card slot is on the **underside** of the carrier board, directly
+below the Jetson module. Insert the 32 GB SanDisk card with the contacts facing
+the board (label facing down).
 
 ---
 
