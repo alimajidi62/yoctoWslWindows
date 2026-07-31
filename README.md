@@ -448,36 +448,76 @@ sudo apt-get install -y liblz4-tool
 
 ### Build Command
 
+> **Status: DONE** — Built on 2026-07-31, 3598 tasks, 0 errors.
+> OpenSSH 8.9p1 included for headless SSH access.
+
 ```bash
 cd ~/bitbake-builds/poky-kirkstone
 source oe-init-build-env build-jetson-nano
 bitbake core-image-minimal 2>&1 | tee ~/yocto-jetson-build.log
 ```
 
-### Flash to SD Card
+> **Lesson learned:** Do not add `IMAGE_INSTALL:append` or `EXTRA_IMAGE_FEATURES`
+> for packages that have not been compiled yet — DNF will fail at `do_rootfs`.
+> Always let a base build complete first, then add packages and rebuild.
 
-Flash the same way as the RPi4 — the WIC image contains everything:
+### Build Output
 
-```bash
-# Output location (after build completes):
+```
 ~/bitbake-builds/poky-kirkstone/build-jetson-nano/tmp/deploy/images/jetson-nano-devkit/
-
-# Flash with balenaEtcher on Windows (select the .sdcard or .wic.bz2 file)
-# Or from WSL:
-bzip2 -dc core-image-minimal-jetson-nano-devkit.tegraflash.tar.bz2 | tar x
-sudo ./dosdcard.sh   # creates the SD card image
-sudo dd if=core-image-minimal-jetson-nano-devkit.sdcard of=/dev/sdX bs=4M status=progress
+├── core-image-minimal-jetson-nano-devkit-*.tegraflash.tar.gz  ← SD card image (44 MB)
+├── Image--4.9.337+git*-jetson-nano-devkit-*.bin               ← kernel (37 MB)
+├── tegra210-p3448-0000-p3449-0000-a02-*.dtb                   ← DTB for Nano A02
+└── tegra210-p3448-0000-p3449-0000-b00-*.dtb                   ← DTB for Nano B01 ← yours
 ```
 
+Copied to Windows repo: `images/jetson-nano/core-image-minimal-jetson-nano-devkit-*.tegraflash.tar.gz`
+
+### Flash to SD Card (from WSL)
+
+```bash
+cd ~/bitbake-builds/poky-kirkstone/build-jetson-nano/tmp/deploy/images/jetson-nano-devkit/
+
+# Extract the flash package
+tar xzf core-image-minimal-jetson-nano-devkit-*.tegraflash.tar.gz
+cd tegraflash/
+
+# Create the SD card image
+sudo ./dosdcard.sh
+
+# Flash (replace sdX with your SD card — check with lsblk first)
+sudo dd if=core-image-minimal-jetson-nano-devkit.sdcard of=/dev/sdX bs=4M status=progress conv=fsync
+```
+
+Or use **balenaEtcher** on Windows — extract the `.tar.gz`, then flash the `.sdcard` file.
+
 > **Note:** The Jetson Nano uses NVIDIA's CBoot bootloader stored in the module's
-> internal eMMC (16 MB). The SD card only holds the kernel and rootfs — the
-> bootloader is already on the module and does not need to be flashed.
+> internal flash. The SD card only holds the kernel and rootfs — no bootloader
+> flashing needed.
 
-### Jetson Nano SD Card Slot Location
+### SD Card Slot Location
 
-The microSD card slot is on the **underside** of the carrier board, directly
-below the Jetson module. Insert the 32 GB SanDisk card with the contacts facing
-the board (label facing down).
+The microSD slot is on the **underside** of the carrier board, directly below
+the Jetson module. Insert the 32 GB SanDisk card with the contacts facing the
+board (label facing down).
+
+### Headless SSH Access (no monitor/keyboard needed)
+
+The image includes **OpenSSH 8.9p1**. After booting:
+
+1. Connect the Jetson Nano's Ethernet port to your router/switch
+2. Find the board's IP address from your router's DHCP table, or use:
+   ```bash
+   # From your PC on the same network
+   arp -a | grep -i nvidia
+   # Or scan the network:
+   nmap -sn 192.168.1.0/24
+   ```
+3. SSH in:
+   ```bash
+   ssh root@<jetson-ip>    # no password (debug-tweaks enabled)
+   ```
+   On Windows, use **PuTTY** or Windows Terminal's built-in SSH.
 
 ---
 
