@@ -201,22 +201,43 @@ bitbake-config-build enable-fragment core/yocto/sstate-mirror-cdn
 
 ## Step 8 — Build an Image
 
-```bash
-# Build the full Sato reference image (takes 1–6 hours on first run) 
-bitbake core-image-sato
+> **Status: DONE** — `core-image-minimal` built successfully on 2026-07-31 (4022 tasks).
 
-# Or a minimal image for faster testing:
-bitbake core-image-minimal
+```bash
+cd /home/ali/bitbake-builds/poky-master/build
+source init-build-env
+bitbake core-image-minimal 2>&1 | tee ~/yocto-build.log
 ```
-Monitor progress while it runs
-Open a second WSL terminal and run:
+
+Monitor progress in a second WSL terminal:
 ```bash
 tail -f ~/yocto-build.log
 ```
-Or check progress live:
-```bash
-# See what tasks are currently running
-cat ~/yocto-build.log | grep "^NOTE: Running task"
+
+### Known Issue — `sed` QA buildpaths failure
+
+**Error:**
+```
+ERROR: sed-4.10-r0 do_package_qa: QA Issue: File /usr/share/info/sed.info
+contains a reference to the build host HOME directory.
+```
+
+**Cause:** `sed`'s upstream documentation contains the string `/home/ali` as a literal example — it matches the WSL username by coincidence. Not a real host-path leak.
+
+**Fix** — add to `conf/local.conf` before building:
+```bitbake
+OEQA_BUILDPATHS_SKIP = "/home/ali"
+```
+
+After adding the fix, resume with `bitbake core-image-minimal` — all previously completed tasks are cached and will not re-run.
+
+### Output Images
+
+```
+~/bitbake-builds/poky-master/build/tmp/deploy/images/raspberrypi4-64/
+├── core-image-minimal-raspberrypi4-64.rootfs.wic.bz2   ← flash this to SD card
+├── core-image-minimal-raspberrypi4-64.rootfs.tar.gz    ← rootfs archive
+└── Image                                                ← kernel image
 ```
 ---
 
