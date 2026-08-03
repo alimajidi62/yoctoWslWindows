@@ -1,0 +1,4 @@
+#!/bin/sh
+case "$1" in
+  GNU_LIBC_VERSION) echo "glibc 2.35" ;;
+esac

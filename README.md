@@ -613,6 +613,105 @@ The image includes **OpenSSH 8.9p1** with `debug-tweaks` (no root password).
    ssh root@192.168.0.204    # no password
    ```
 
+### Connecting VS Code via Remote SSH
+
+VS Code Remote SSH requires three prerequisites on the board and one settings fix
+on the Windows host. Do this once after flashing; settings survive reboot.
+
+#### 1 — Deploy missing shared libraries
+
+VS Code Server needs `libstdc++` and `libgcc_s`. Copy them from the Yocto sysroot:
+
+```powershell
+# libstdc++
+wsl -- bash -c "scp /home/###/bitbake-builds/poky-kirkstone/build-jetson-nano/tmp/sysroots-components/armv8a/gcc-runtime/usr/lib/libstdc++.so.6.0.29 root@192.168.0.204:/usr/lib/libstdc++.so.6"
+
+# libgcc_s
+wsl -- bash -c "scp /home/###/bitbake-builds/poky-kirkstone/build-jetson-nano/tmp/sysroots-components/armv8a/libgcc/lib/libgcc_s.so.1 root@192.168.0.204:/usr/lib/libgcc_s.so.1"
+
+# Refresh linker cache
+ssh root@192.168.0.204 "ldconfig"
+```
+
+#### 2 — Deploy a `getconf` stub
+
+VS Code's setup script calls `getconf GNU_LIBC_VERSION` to detect glibc. The minimal
+image has no `getconf`, so the script falls back to Alpine detection and picks the
+wrong (musl) CLI binary. Create a stub:
+
+```powershell
+# Write stub to WSL, strip Windows line endings, then SCP to board
+wsl -- bash -c "printf '#!/bin/sh\ncase \"\$1\" in\n  GNU_LIBC_VERSION) echo \"glibc 2.35\" ;;\nesac\n' > /tmp/getconf"
+wsl -- bash -c "scp /tmp/getconf root@192.168.0.204:/usr/bin/getconf"
+ssh root@192.168.0.204 "chmod +x /usr/bin/getconf && getconf GNU_LIBC_VERSION"
+# glibc 2.35
+```
+
+#### 3 — Pre-install the glibc VS Code CLI binary
+
+VS Code downloads `cli-alpine-arm64` when `getconf` is absent or returns unexpected
+output. Even with the stub in place, the first connection may have already cached
+the Alpine binary. Manually replace it with the glibc `cli-linux-arm64` build.
+
+Replace `{COMMIT}` with the commit ID shown in **Help → About** in VS Code
+(e.g. `e4c7e7b1d6d060162f4aa7f8225271b67ce1df75`).
+
+```powershell
+# Download glibc CLI to WSL home (persists across wsl sessions unlike /tmp)
+wsl -- bash -c "wget -q -O ~/vscode-cli-linux-arm64.tar.gz 'https://update.code.visualstudio.com/commit:{COMMIT}/cli-linux-arm64/stable'"
+
+# Create server directory, SCP tarball, extract
+wsl -- bash -c "ssh root@192.168.0.204 'mkdir -p /home/root/.vscode-server'"
+wsl -- bash -c "scp ~/vscode-cli-linux-arm64.tar.gz root@192.168.0.204:/home/root/.vscode-server/vscode-cli-{COMMIT}.tar.gz"
+wsl -- bash -c "ssh root@192.168.0.204 'cd /home/root/.vscode-server && tar xzf vscode-cli-{COMMIT}.tar.gz'"
+
+# VS Code calls the commit-named binary — overwrite the Alpine copy with the glibc one
+wsl -- bash -c "ssh root@192.168.0.204 'cp -f /home/root/.vscode-server/code /home/root/.vscode-server/code-{COMMIT}'"
+
+# Verify
+wsl -- bash -c "ssh root@192.168.0.204 '/home/root/.vscode-server/code-{COMMIT} --version'"
+# code 1.131.0 (commit {COMMIT})
+```
+
+> **Why copy to `code-{COMMIT}`?**  
+> VS Code's setup script looks for `~/.vscode-server/code-{commitId}` specifically,
+> not the plain `code` binary. If that file is the Alpine build it fails with
+> *"ld-musl-aarch64.so.1 not found"* even though the board uses glibc.
+
+To confirm the binary is the glibc version (not Alpine):
+```powershell
+# Should print a non-zero count (glibc binary contains "ld-linux" string)
+ssh root@192.168.0.204 "grep -c ld-linux /home/root/.vscode-server/code-{COMMIT}"
+```
+
+#### 4 — Set `remote.SSH.remotePlatform` in VS Code
+
+Open VS Code User Settings JSON (`Ctrl+Shift+P` → **Preferences: Open User Settings (JSON)**) and add:
+
+```json
+"remote.SSH.remotePlatform": {
+    "jetson-nano": "linux"
+}
+```
+
+This prevents VS Code from asking "Select the platform" on every new connection and
+ensures it always uses the Linux (glibc) code path.
+
+#### 5 — Connect
+
+`Ctrl+Shift+P` → **Remote-SSH: Connect to Host** → `jetson-nano`
+
+VS Code will find the existing `code-{COMMIT}` binary, skip the download, and start
+the server. The SSH host `jetson-nano` must be defined in `~/.ssh/config`:
+
+```
+Host jetson-nano
+    HostName 192.168.0.204
+    User root
+```
+
+---
+
 ### Installing Python 3 (live, no reflash)
 
 The minimal image has no package manager. Install a standalone Python binary:
