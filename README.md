@@ -802,6 +802,121 @@ Optimize-VHD -Path "C:\Users\###\AppData\Local\wsl\{###}\ext4.vhdx" -Mode Full
 
 ---
 
+## Rebuilding the Jetson Nano Image with Extra Features (2026-08-03)
+
+> **Status: DONE** — Image rebuilt successfully, 3914 tasks, 0 errors.
+
+### What Was Added to the Image
+
+| Feature | `local.conf` setting | Notes |
+|---|---|---|
+| Package manager (DNF/RPM) | `EXTRA_IMAGE_FEATURES += "package-management"` | `dnf install <pkg>` on-board after boot |
+| Python 3 + pip | `IMAGE_INSTALL:append = " python3 python3-pip python3-misc python3-modules"` | Replaces manual SCP install |
+| `getconf` + glibc utils | `IMAGE_INSTALL:append = " glibc-utils"` | VS Code SSH prereq |
+| `libstdc++` | `IMAGE_INSTALL:append = " libstdc++"` | VS Code SSH prereq |
+| OpenSSH (already present) | `IMAGE_INSTALL:append = " openssh openssh-sshd openssh-sftp-server"` | Baked in, no post-install |
+
+### What Was NOT Added (and Why)
+
+| Feature | Reason skipped |
+|---|---|
+| `tools-sdk` (on-board gcc) | Triggers `gcc-for-nvcc` fetch via tegra's always-on `cuda:` machine override → build fails. Install gcc post-boot via RPM instead (see below). |
+| `tegra-libraries-cuda` | Same `gcc-for-nvcc` dependency. Can be added back once gcc-for-nvcc is fixed. |
+
+### Root Cause of gcc-for-nvcc Build Failure
+
+`meta-tegra/conf/machine/include/tegra-common.inc` permanently adds `cuda:` to
+`MACHINEOVERRIDES` for all Tegra machines. `cuda-gcc.bbclass` then injects
+`gcc-8-runtime` into every recipe's `DEPENDS`. `gcc-8-runtime` requires
+`gcc-source-8.5.0:do_fetch` which downloads gcc-8.5.0.tar.xz from
+`ftpmirror.gnu.org`. The GNU mirror was returning a domain-squatter redirect page
+("HugeDomains.com", 15 bytes) via a hijacked fallback mirror entry. The real
+`gcc-8.5.0.tar.xz` (SHA256 `d308841a...`) was manually downloaded from
+`ftp.gnu.org` and `tools-sdk` was removed to skip the whole chain.
+
+### Installing GCC Post-Boot via RPM
+
+The Yocto build already compiled gcc as a dependency. The RPMs are in the build output.
+Run from WSL after the board boots and is reachable on the network:
+
+```bash
+# Find the gcc RPMs built during the Yocto build
+ls /home/ali/bitbake-builds/poky-kirkstone/build-jetson-nano/tmp/deploy/rpm/aarch64/gcc-*.rpm
+
+# Copy to board and install
+scp /home/ali/bitbake-builds/poky-kirkstone/build-jetson-nano/tmp/deploy/rpm/aarch64/gcc-*.rpm \
+    root@192.168.0.204:/tmp/
+ssh root@192.168.0.204 "rpm -ivh /tmp/gcc-*.rpm"
+```
+
+Or use DNF with a local package feed (see below).
+
+### Setting Up a Local DNF Package Feed
+
+The board has `dnf` but needs a repository to install from. Serve the Yocto-built
+RPMs from WSL over HTTP:
+
+```bash
+# On WSL — install createrepo and python3 http server
+cd /home/ali/bitbake-builds/poky-kirkstone/build-jetson-nano/tmp/deploy/rpm
+python3 -m http.server 8000 &
+
+# On the board
+cat > /etc/yum.repos.d/yocto-local.repo << 'EOF'
+[yocto-local]
+name=Yocto Local Build
+baseurl=http://192.168.0.X:8000/aarch64  # replace X with your WSL host IP
+enabled=1
+gpgcheck=0
+EOF
+
+dnf install gcc
+```
+
+### Rebuild Script
+
+To regenerate the SD card image after any `local.conf` change:
+
+```bash
+# 1 — Rebuild image
+cd /home/ali/bitbake-builds/poky-kirkstone
+source oe-init-build-env build-jetson-nano
+bitbake core-image-minimal
+
+# 2 — Generate .sdcard (script in this repo)
+bash /mnt/c/dev/Green/linuxVM/yoctoWslWindows/scripts/make-sdcard.sh
+
+# 3 — Copy to Windows
+cp /home/ali/jetson-flash/core-image-minimal.sdcard \
+   /mnt/c/dev/Green/linuxVM/yoctoWslWindows/images/jetson-nano/core-image-minimal.sdcard
+
+# 4 — Flash from admin PowerShell (see notpush.txt for one-liner)
+```
+
+### make-sdcard.sh Key Fix
+
+`dosdcard.sh` looks for `core-image-minimal.ext4` in its working directory.
+The actual ext4 file lives in the Yocto deploy dir. The script symlinks it:
+
+```bash
+ln -sf "$DEPLOYDIR/core-image-minimal-jetson-nano-devkit.ext4" core-image-minimal.ext4
+```
+
+Without this symlink `dosdcard.sh` silently waits and the image is never written.
+
+### Flashing Note — Removable Media Cannot Go Offline
+
+`Set-Disk -Number 1 -IsOffline $true` always fails for SD cards on Windows
+(`Removable media cannot be set to offline`). This error is harmless — in an
+elevated PowerShell, `[System.IO.File]::Open("\\.\PhysicalDrive1", ...)` succeeds
+anyway without the disk needing to be offline. The error can be ignored.
+
+The flash command requires **admin PowerShell** (right-click → Run as administrator).
+VS Code's integrated terminal does NOT inherit admin rights even when VS Code itself
+is launched as admin.
+
+---
+
 ## Useful References
 
 - [Yocto Project Quick Build](https://docs.yoctoproject.org/brief-yoctoprojectqs/index.html)
