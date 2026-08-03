@@ -637,6 +637,21 @@ ssh root@192.168.0.204 "python3 --version && pip3 --version"
 
 Files survive reboot — stored on the SD card's ext4 rootfs at `/opt/python/`.
 
+### Baking Python 3 into the Image (permanent)
+
+To have Python permanently in every future image without manual install:
+
+```bash
+# Add to local.conf
+wsl -- bash -c "echo 'IMAGE_INSTALL:append = \" python3 python3-pip\"' >> /home/###/bitbake-builds/poky-kirkstone/build-jetson-nano/conf/local.conf"
+
+# Rebuild
+wsl -- bash -c "cd /home/###/bitbake-builds/poky-kirkstone && source oe-init-build-env build-jetson-nano && bitbake core-image-minimal"
+```
+
+Then run `dosdcard.sh`, copy the `.sdcard` to Windows, and flash with the PowerShell FileStream command.
+Python will be present on every reflash from that point on — no post-install needed.
+
 ### Installing Packages on a Minimal Yocto Image
 
 | Method | How | When to use |
