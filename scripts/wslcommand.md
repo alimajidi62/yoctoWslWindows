@@ -98,3 +98,22 @@ python3
 ```
 
 ---
+## 7. Write and Run a Python Script
+
+```bash
+# Create and open hello.py in the nano text editor
+nano hello.py
+```
+
+Add this line, then save with `Ctrl+O` and exit with `Ctrl+X`:
+
+```python
+print("Hello Ali!")
+```
+
+```bash
+# Run the script — expected output: Hello Ali!
+python3 hello.py
+```
+
+---
