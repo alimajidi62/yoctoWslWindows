@@ -73,3 +73,4 @@ gcc hello.c -o hello
 ```bash
 # Install git, cmake, gdb (debugger), vim, curl, wget, unzip, Python 3, and pip
 sudo apt install git cmake gdb vim curl wget unzip python3 python3-pip -y
+```
