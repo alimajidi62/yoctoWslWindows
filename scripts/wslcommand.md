@@ -187,3 +187,42 @@ python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get
 - WSL2 is required (not WSL1). Confirm with `wsl -l -v` — version must be **2**.
 - If `nvidia-smi` fails inside WSL, update your Windows NVIDIA driver from
   https://www.nvidia.com/drivers
+
+---
+
+## 10. Connect VS Code to WSL
+
+### Option A — From inside WSL terminal (easiest)
+
+```bash
+# Navigate to your project folder inside WSL, then launch VS Code
+cd ~
+code .
+```
+
+VS Code opens on Windows and automatically connects to WSL.
+Confirm by checking the **bottom-left corner** — it must show:
+`><WSL: Ubuntu-24.04`
+
+Also verify in the VS Code terminal (`Ctrl+` `` ` ``):
+```bash
+# Should show a Linux bash prompt, not PowerShell
+ali@**********:~$
+```
+
+### Option B — From VS Code directly
+
+1. Install the **WSL** extension: `ms-vscode-remote.remote-wsl`
+2. Click the **`><`** button in the bottom-left corner of VS Code
+3. Select **"Connect to WSL"** → chooses Ubuntu-24.04 automatically
+
+### Troubleshooting — `sudo` not found after connecting
+
+If `sudo` fails with *"not included in PATH"*, the `~/.bashrc` PATH is broken.
+Run this fix script from PowerShell:
+
+```powershell
+wsl -d Ubuntu-24.04 -- bash /mnt/c/dev/Green/linuxVM/yoctoWslWindows/scripts/fix-bashrc.sh
+```
+
+Then open a new WSL terminal — `sudo` will work correctly.
