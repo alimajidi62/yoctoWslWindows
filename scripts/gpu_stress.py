@@ -20,6 +20,17 @@ while True:
         break
 
     c = torch.matmul(a, b)
+    c1 = torch.matmul(c, b)
+    c2 = torch.matmul(c1, b)
+    c3 = torch.matmul(c2, b)
+    c4 = torch.matmul(c3, b)
+    c5 = torch.matmul(c4, b)
+    c6 = torch.matmul(c5, b)
+    c7 = torch.matmul(c6, b)
+    c8 = torch.matmul(c7, b)
+    c9 = torch.matmul(c8, b)
+    c10 = torch.matmul(c9, b)
+    c11 = torch.matmul(c10, b)
     torch.cuda.synchronize()
     iterations += 1
 
