@@ -98,6 +98,7 @@ python3
 ```
 
 ---
+
 ## 7. Write and Run a Python Script
 
 ```bash
@@ -117,3 +118,20 @@ python3 hello.py
 ```
 
 ---
+
+## 8. Create and Use a Python Virtual Environment
+
+```bash
+# Create an isolated virtual environment named "myenv"
+python3 -m venv myenv
+
+# Activate the virtual environment
+source myenv/bin/activate
+# Your prompt will change to: (myenv) user@machine:~$
+
+# Install packages inside the venv without affecting the system Python
+pip install <package-name>
+
+# Deactivate when done
+deactivate
+```
