@@ -14,3 +14,27 @@ wsl -l -v
 ```
 
 ---
+
+## 2. Update Package Lists (run inside WSL/Ubuntu)
+
+```bash
+# Refresh the list of available packages from Ubuntu repositories
+sudo apt update
+```
+
+---
+
+## 3. Install C/C++ Build Tools
+
+```bash
+# Install GCC, G++, make, and other essential compilation tools
+sudo apt install build-essential -y
+
+# Verify GCC (C compiler) version
+gcc --version
+
+# Verify G++ (C++ compiler) version
+g++ --version
+```
+
+---
