@@ -135,3 +135,55 @@ pip install <package-name>
 # Deactivate when done
 deactivate
 ```
+
+---
+
+## 9. NVIDIA GPU Access in WSL2 (RTX 2000 Ada)
+
+> **How it works:** WSL2 uses GPU Paravirtualization — the Windows NVIDIA driver
+> (already installed on your machine, version 32.0.15.9595) handles the GPU and
+> exposes it to WSL2. **Do NOT install the full NVIDIA Linux driver inside WSL** —
+> it will break the paravirtualization layer.
+
+### Step 1 — Verify the GPU is visible inside WSL
+
+```bash
+# Should list your NVIDIA GPU if the Windows driver supports WSL2
+ls /dev/dxg
+nvidia-smi
+```
+
+### Step 2 — Install CUDA Toolkit inside WSL (Ubuntu 24.04)
+
+```bash
+# Add the NVIDIA CUDA repository for Ubuntu 24.04
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+sudo dpkg -i cuda-keyring_1.1-1_all.deb
+sudo apt update
+
+# Install the CUDA toolkit (compiler, libraries, tools)
+sudo apt install cuda-toolkit -y
+
+# Verify the CUDA compiler is available
+nvcc --version
+```
+
+### Step 3 — Test GPU with a Python Script
+
+```bash
+# Install PyTorch with CUDA support
+pip install torch --index-url https://download.pytorch.org/whl/cu128
+
+# Confirm PyTorch can see the GPU
+python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))"
+# Expected output:
+# True
+# NVIDIA RTX 2000 Ada Generation Laptop GPU
+```
+
+### Notes
+- The CUDA version installed must match your Windows driver's supported CUDA version.
+  Run `nvidia-smi` on Windows first to see the max supported CUDA version.
+- WSL2 is required (not WSL1). Confirm with `wsl -l -v` — version must be **2**.
+- If `nvidia-smi` fails inside WSL, update your Windows NVIDIA driver from
+  https://www.nvidia.com/drivers
