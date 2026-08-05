@@ -38,3 +38,38 @@ g++ --version
 ```
 
 ---
+
+## 4. Hello World in C
+
+```bash
+# Open (or create) hello.c in the nano text editor
+nano hello.c
+```
+
+Paste this into the editor, then save with `Ctrl+O` and exit with `Ctrl+X`:
+
+```c
+#include <stdio.h>
+
+int main()
+{
+    printf("Hello World\n");
+    return 0;
+}
+```
+
+```bash
+# Compile hello.c and produce an executable named "hello"
+gcc hello.c -o hello
+
+# Run the compiled program
+./hello
+```
+
+---
+
+## 5. Install Common Development Tools
+
+```bash
+# Install git, cmake, gdb (debugger), vim, curl, wget, unzip, Python 3, and pip
+sudo apt install git cmake gdb vim curl wget unzip python3 python3-pip -y
