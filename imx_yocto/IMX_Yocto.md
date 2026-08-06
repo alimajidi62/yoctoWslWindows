@@ -156,7 +156,7 @@ PARALLEL_MAKE = "-j4"
 INHERIT += "rm_work"
 
 # On-target development tools and SSH server
-IMAGE_INSTALL:append = " gcc g++ binutils make python3 python3-modules openssh-server"
+IMAGE_INSTALL:append = " gcc g++ binutils make python3 python3-modules openssh-sshd"
 ```
 
 > Check your WSL CPU count with: `nproc`  
