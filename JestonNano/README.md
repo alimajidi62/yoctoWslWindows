@@ -524,7 +524,7 @@ cp ~/jetson-flash/core-image-minimal.sdcard \
 
 ### Flash to SD Card (Windows — admin PowerShell)
 
-`wsl --mount` is blocked by company policy, so flashing is done directly from
+`wsl --mount` may not be available in all environments, so flashing is done directly from
 Windows using the .NET FileStream API. Run in **admin PowerShell**:
 
 ```powershell
