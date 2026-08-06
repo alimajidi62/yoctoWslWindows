@@ -154,10 +154,24 @@ PARALLEL_MAKE = "-j4"
 
 # Keep tmp small — rm_work removes build artifacts after packaging
 INHERIT += "rm_work"
+
+# On-target development tools — gcc to compile C, python3 to run Python scripts
+IMAGE_INSTALL:append = " gcc g++ binutils make python3 python3-modules"
 ```
 
 > Check your WSL CPU count with: `nproc`  
 > Adjust `BB_NUMBER_THREADS` and `PARALLEL_MAKE` to match.
+
+**What each package gives you inside the running QEMU:**
+
+| Package | What you can do |
+|---|---|
+| `gcc` | Compile C code directly on the board: `gcc hello.c -o hello` |
+| `g++` | Compile C++ code: `g++ hello.cpp -o hello` |
+| `binutils` | `objdump`, `nm`, `readelf` — inspect compiled binaries |
+| `make` | Run Makefiles on the board |
+| `python3` | Run Python scripts: `python3 script.py` |
+| `python3-modules` | Full Python standard library (os, sys, json, socket, etc.) |
 
 ---
 
