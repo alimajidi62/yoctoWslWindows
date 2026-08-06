@@ -1,3 +1,5 @@
 ﻿notpush.txt
 *.sdcard
 *.crt
+# screenshots may expose terminal paths or company system info
+*[Ss]creenshot*

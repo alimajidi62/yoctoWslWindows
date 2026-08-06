@@ -173,6 +173,8 @@ IMAGE_INSTALL:append = " gcc g++ binutils make python3 python3-modules"
 | `python3` | Run Python scripts: `python3 script.py` |
 | `python3-modules` | Full Python standard library (os, sys, json, socket, etc.) |
 
+> **One thing to be aware of:** `INHERIT += "rm_work"` is already set to save disk space during build, but it will remove the intermediate build files. If you see a conflict with any dev package, just remove that line temporarily.
+
 ---
 
 ## Step 7 — Build a Minimal Image
