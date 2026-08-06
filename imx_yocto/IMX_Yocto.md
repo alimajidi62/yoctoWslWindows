@@ -308,13 +308,89 @@ bitbake-layers find-recipes <recipe-name>
 |---|---|
 | `ACCEPT_FSL_EULA` error | Add `ACCEPT_FSL_EULA = "1"` to `local.conf` |
 | Out of disk during build | Free up space or move `DL_DIR`/`SSTATE_DIR` to a larger partition |
-| QEMU kernel panic on boot | Verify DTB filename matches what was built in `deploy/images/` |
 | `locale` errors from bitbake | Run `sudo locale-gen en_US.UTF-8` and re-source environment |
 | Build hangs in WSL | Reduce `BB_NUMBER_THREADS` and `PARALLEL_MAKE` to avoid OOM |
 | WSL2 networking slow downloads | Set `BB_NO_NETWORK = "0"` and check WSL DNS (`/etc/resolv.conf`) |
 | `MACHINE=imx6qsabrelite is invalid` | Machine was removed in scarthgap — use `imx6qdlsabresd` instead |
 | `Nothing RPROVIDES 'openssh-server'` | Wrong package name — use `openssh-sshd` in `IMAGE_INSTALL` |
 | Images not found in `tmp/` | Yocto with glibc puts output in `tmp-glibc/` not `tmp/` |
+
+---
+
+## QEMU Boot — Known Issues (QEMU 8.2 + sabrelite)
+
+These issues were hit during actual boot attempts. Do not repeat them.
+
+### ❌ Do NOT use `-serial stdio` with `-nographic`
+
+```bash
+# WRONG — causes "cannot use stdio by multiple character devices"
+qemu-system-arm -M sabrelite -nographic -serial stdio ...
+```
+
+`-nographic` already routes the first UART to stdio. Adding `-serial stdio` conflicts.  
+**Fix:** remove `-serial stdio` entirely when using `-nographic`.
+
+---
+
+### ❌ Do NOT use `sdhci-pci` — sabrelite has no PCI bus
+
+```bash
+# WRONG — causes "No 'PCI' bus found for device 'sdhci-pci'"
+-device sdhci-pci,id=sdhci -device sd-card,drive=sd
+```
+
+The i.MX6 sabrelite QEMU machine has no PCI bus.  
+**Fix:** use `virtio-blk-device` (see below).
+
+---
+
+### ❌ Do NOT use `-sd` or `if=sd`
+
+```bash
+# WRONG — causes "machine type does not support if=sd,bus=0,unit=0"
+qemu-system-arm -M sabrelite -sd image.wic ...
+```
+
+QEMU 8.2 `sabrelite` dropped legacy SD card attachment via `-sd`.  
+**Fix:** use `virtio-blk-device` (see below).
+
+---
+
+### ✅ Correct storage attachment — virtio-blk-device
+
+The sabrelite machine exposes a `virtio-bus` (MMIO-based). Use it:
+
+```bash
+-drive file=image.wic,format=raw,if=none,id=blk0 \
+-device virtio-blk-device,drive=blk0 \
+-append "... root=/dev/vda2 ..."
+```
+
+**Requirement:** kernel must have `CONFIG_VIRTIO_MMIO=y` and `CONFIG_VIRTIO_BLK=y`.  
+The default imx6qdlsabresd kernel does NOT have these. Enable them via `meta-custom` layer:
+
+```bash
+# Run once to create the layer and rebuild the kernel
+python3 ~/imx6-yocto/add-virtio-layer.py
+cd ~/imx6-yocto && source poky/oe-init-build-env build
+bitbake linux-fslc
+bitbake core-image-minimal
+```
+
+The `add-virtio-layer.py` script in this repo handles this automatically.
+
+---
+
+### ❌ `.wic.gz` is a symlink — gunzip fails
+
+```bash
+# WRONG — causes "Too many levels of symbolic links"
+gunzip -k core-image-minimal-imx6qdlsabresd.rootfs.wic.gz
+```
+
+Yocto's deploy directory uses symlinks pointing to timestamped files.  
+**Fix:** resolve the real file before decompressing, or use the `qemu-boot.py` script which handles this automatically.
 
 ---
 
