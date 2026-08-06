@@ -155,8 +155,8 @@ PARALLEL_MAKE = "-j4"
 # Keep tmp small — rm_work removes build artifacts after packaging
 INHERIT += "rm_work"
 
-# On-target development tools — gcc to compile C, python3 to run Python scripts
-IMAGE_INSTALL:append = " gcc g++ binutils make python3 python3-modules"
+# On-target development tools and SSH server
+IMAGE_INSTALL:append = " gcc g++ binutils make python3 python3-modules openssh-server"
 ```
 
 > Check your WSL CPU count with: `nproc`  
@@ -232,29 +232,33 @@ qemu-system-arm \
 
 ---
 
-## Step 9 — Add SSH to the Image (Optional)
+## Step 9 — Connect via SSH into QEMU
 
-To SSH into the running QEMU machine, add `openssh-server` to the image.
+`openssh-server` is already included in the image from Step 6. Add port forwarding to the QEMU command:
 
-In `local.conf`, add:
-```
-IMAGE_INSTALL:append = " openssh-server"
-```
-
-Then rebuild:
 ```bash
-bitbake core-image-minimal
+qemu-system-arm \
+  -M sabrelite \
+  -m 1G \
+  -kernel zImage \
+  -dtb imx6q-sabrelite.dtb \
+  -drive file=rootfs.img,format=raw,id=sd,if=none \
+  -device sdhci-pci,id=sdhci \
+  -device sd-card,drive=sd \
+  -append "console=ttymxc0,115200 root=/dev/mmcblk0 rootwait rw" \
+  -serial stdio \
+  -nographic \
+  -net nic,model=virtio \
+  -net user,hostfwd=tcp::2222-:22
 ```
 
-QEMU command — add port forwarding:
-```bash
--net user,hostfwd=tcp::2222-:22
-```
+Once the board has booted (you see a login prompt on the serial console), open a second WSL terminal and connect:
 
-Then from WSL:
 ```bash
 ssh -p 2222 root@localhost
 ```
+
+> Root has no password by default (`debug-tweaks` is set). Press Enter when prompted.
 
 ---
 
