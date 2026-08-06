@@ -2,11 +2,11 @@
 
 Target: **i.MX6 Quad SABRE SD** (`imx6qdlsabresd`) emulated with QEMU `sabrelite` machine (same Cortex-A9 CPU)  
 Yocto Release: **Scarthgap 5.0 LTS**  
-Host: WSL2 Ubuntu 22.04
+Host: WSL2 Ubuntu 24.04
 
 ---
 
-## Step 0 — WSL2 Disk & Swap Check
+## Step 0 — WSL2 Disk & Swap Check ✅
 
 Yocto builds are large. Make sure you have enough resources before starting.
 
@@ -17,6 +17,8 @@ df -h ~
 # Check available RAM + swap — need at least 8 GB total
 free -h
 ```
+
+> **Actual results on this machine:** 938 GB free, 15 GB RAM + 4 GB swap, 22 CPU cores.
 
 > If your WSL2 virtual disk is too small, expand it from PowerShell (Windows side):
 > ```powershell
@@ -29,7 +31,7 @@ free -h
 
 ---
 
-## Step 1 — Install WSL2 Host Dependencies
+## Step 1 — Install WSL2 Host Dependencies ✅
 
 ```bash
 sudo apt update && sudo apt upgrade -y
@@ -48,7 +50,7 @@ sudo update-locale LANG=en_US.UTF-8
 
 ---
 
-## Step 2 — Create Project Directory Structure
+## Step 2 — Create Project Directory Structure ✅
 
 ```bash
 # All work goes here — change the path if you prefer somewhere else
@@ -59,7 +61,7 @@ cd $IMX_YOCTO_BASE
 
 ---
 
-## Step 3 — Clone Yocto Layers (Scarthgap branch)
+## Step 3 — Clone Yocto Layers (Scarthgap branch) ✅
 
 ```bash
 cd $IMX_YOCTO_BASE
@@ -88,7 +90,7 @@ $HOME/imx6-yocto/
 
 ---
 
-## Step 4 — Initialize the Build Environment
+## Step 4 — Initialize the Build Environment ✅
 
 ```bash
 cd $IMX_YOCTO_BASE
@@ -131,36 +133,30 @@ bitbake-layers show-layers
 
 ---
 
-## Step 6 — Configure `local.conf`
+## Step 6 — Configure `local.conf` ✅
 
-Edit `$IMX_YOCTO_BASE/build/conf/local.conf` — add/change these key lines:
+Handled by `setup-build-conf.py` (see Step 5). Generated content:
 
 ```bash
 # imx6qsabrelite was removed from meta-freescale scarthgap; imx6qdlsabresd is the same i.MX6 Quad Cortex-A9
 MACHINE = "imx6qdlsabresd"
 
-# Accept NXP EULA (required to build any i.MX recipe)
 ACCEPT_FSL_EULA = "1"
 
-# Shared download cache — avoids re-downloading sources across builds
 DL_DIR = "${HOME}/yocto-downloads"
-
-# Shared state cache — speeds up rebuilds
 SSTATE_DIR = "${HOME}/yocto-sstate"
 
-# Parallel build tuning — set to number of CPU cores in WSL
-BB_NUMBER_THREADS = "4"
-PARALLEL_MAKE = "-j4"
+# Set to your core count — this machine uses 16 of 22 cores
+BB_NUMBER_THREADS = "16"
+PARALLEL_MAKE = "-j16"
 
-# Keep tmp small — rm_work removes build artifacts after packaging
 INHERIT += "rm_work"
 
-# On-target development tools and SSH server
+# On-target dev tools and SSH — note: Yocto package is openssh-sshd, not openssh-server
 IMAGE_INSTALL:append = " gcc g++ binutils make python3 python3-modules openssh-sshd"
 ```
 
-> Check your WSL CPU count with: `nproc`  
-> Adjust `BB_NUMBER_THREADS` and `PARALLEL_MAKE` to match.
+> Check your WSL CPU count with: `nproc` and adjust the thread values in `setup-build-conf.py` before running it.
 
 **What each package gives you inside the running QEMU:**
 
@@ -177,27 +173,32 @@ IMAGE_INSTALL:append = " gcc g++ binutils make python3 python3-modules openssh-s
 
 ---
 
-## Step 7 — Build a Minimal Image
+## Step 7 — Build a Minimal Image 🔄 (in progress)
 
 ```bash
 # Make sure you are in the build environment first
-cd $IMX_YOCTO_BASE
+cd ~/imx6-yocto
 source poky/oe-init-build-env build
 
-# Build — this will take 2-4 hours on first run (downloads + compiles everything)
+# Build — takes 2-4 hours on first run (downloads + compiles everything)
 bitbake core-image-minimal
 ```
 
 Build output lands in:
 ```
-build/tmp/deploy/images/imx6qsabrelite/
+build/tmp/deploy/images/imx6qdlsabresd/
 ```
 
 Key files produced:
 ```
-zImage                                          # Kernel
-imx6q-sabrelite.dtb                             # Device tree blob
-core-image-minimal-imx6qsabrelite.ext4          # Root filesystem
+zImage                                         # Kernel
+imx6q-sabresd.dtb                              # Device tree blob
+core-image-minimal-imx6qdlsabresd.ext4         # Root filesystem
+```
+
+To monitor build progress from another terminal:
+```bash
+tail -f ~/imx6-yocto/build/tmp/log/cooker/imx6qdlsabresd/console-latest.log
 ```
 
 ---
@@ -206,18 +207,19 @@ core-image-minimal-imx6qsabrelite.ext4          # Root filesystem
 
 ```bash
 # Convert the ext4 image to a raw disk QEMU can use
-cd $IMX_YOCTO_BASE/build/tmp/deploy/images/imx6qsabrelite
+cd ~/imx6-yocto/build/tmp/deploy/images/imx6qdlsabresd
 
 qemu-img convert -f raw -O raw \
-  core-image-minimal-imx6qsabrelite.ext4 \
+  core-image-minimal-imx6qdlsabresd.ext4 \
   rootfs.img
 
 # Boot in QEMU — no window, serial console only
+# Note: QEMU machine is 'sabrelite'; DTB is from imx6qdlsabresd build (same i.MX6Q Cortex-A9 core)
 qemu-system-arm \
   -M sabrelite \
   -m 1G \
   -kernel zImage \
-  -dtb imx6q-sabrelite.dtb \
+  -dtb imx6q-sabresd.dtb \
   -drive file=rootfs.img,format=raw,id=sd,if=none \
   -device sdhci-pci,id=sdhci \
   -device sd-card,drive=sd \
@@ -234,14 +236,14 @@ qemu-system-arm \
 
 ## Step 9 — Connect via SSH into QEMU
 
-`openssh-server` is already included in the image from Step 6. Add port forwarding to the QEMU command:
+`openssh-sshd` is already included in the image from Step 6. Add port forwarding to the QEMU command:
 
 ```bash
 qemu-system-arm \
   -M sabrelite \
   -m 1G \
   -kernel zImage \
-  -dtb imx6q-sabrelite.dtb \
+  -dtb imx6q-sabresd.dtb \
   -drive file=rootfs.img,format=raw,id=sd,if=none \
   -device sdhci-pci,id=sdhci \
   -device sd-card,drive=sd \
@@ -302,6 +304,8 @@ bitbake-layers find-recipes <recipe-name>
 | `locale` errors from bitbake | Run `sudo locale-gen en_US.UTF-8` and re-source environment |
 | Build hangs in WSL | Reduce `BB_NUMBER_THREADS` and `PARALLEL_MAKE` to avoid OOM |
 | WSL2 networking slow downloads | Set `BB_NO_NETWORK = "0"` and check WSL DNS (`/etc/resolv.conf`) |
+| `MACHINE=imx6qsabrelite is invalid` | Machine was removed in scarthgap — use `imx6qdlsabresd` instead |
+| `Nothing RPROVIDES 'openssh-server'` | Wrong package name — use `openssh-sshd` in `IMAGE_INSTALL` |
 
 ---
 
