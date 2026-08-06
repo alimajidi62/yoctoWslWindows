@@ -173,57 +173,65 @@ IMAGE_INSTALL:append = " gcc g++ binutils make python3 python3-modules openssh-s
 
 ---
 
-## Step 7 — Build a Minimal Image 🔄 (in progress)
+## Step 7 — Build a Minimal Image ✅
 
 ```bash
-# Make sure you are in the build environment first
 cd ~/imx6-yocto
 source poky/oe-init-build-env build
-
-# Build — takes 2-4 hours on first run (downloads + compiles everything)
 bitbake core-image-minimal
 ```
 
 Build output lands in:
 ```
-build/tmp/deploy/images/imx6qdlsabresd/
+build/tmp-glibc/deploy/images/imx6qdlsabresd/
 ```
+
+> Note: Yocto uses `tmp-glibc/` (not `tmp/`) when building with the default glibc toolchain.
 
 Key files produced:
 ```
-zImage                                         # Kernel
-imx6q-sabresd.dtb                              # Device tree blob
-core-image-minimal-imx6qdlsabresd.ext4         # Root filesystem
+zImage                                              # Kernel (symlink)
+imx6q-sabresd.dtb                                  # Device tree blob for i.MX6 Quad
+core-image-minimal-imx6qdlsabresd.rootfs.wic.gz    # Full SD card image (compressed)
+SPL                                                # Secondary Program Loader
+u-boot.img                                         # U-Boot bootloader
 ```
 
 To monitor build progress from another terminal:
 ```bash
-tail -f ~/imx6-yocto/build/tmp/log/cooker/imx6qdlsabresd/console-latest.log
+tail -f ~/imx6-yocto/build/tmp-glibc/log/cooker/imx6qdlsabresd/console-latest.log
 ```
 
 ---
 
 ## Step 8 — Run the Image in QEMU
 
+Use the boot script in this repo — it decompresses the WIC image and launches QEMU:
+
 ```bash
-# Convert the ext4 image to a raw disk QEMU can use
-cd ~/imx6-yocto/build/tmp/deploy/images/imx6qdlsabresd
+cp /mnt/c/dev/Green/linuxVM/yoctoWslWindows/imx_yocto/qemu-boot.py ~/imx6-yocto/
+python3 ~/imx6-yocto/qemu-boot.py
+```
 
-qemu-img convert -f raw -O raw \
-  core-image-minimal-imx6qdlsabresd.ext4 \
-  rootfs.img
+Or manually:
 
-# Boot in QEMU — no window, serial console only
-# Note: QEMU machine is 'sabrelite'; DTB is from imx6qdlsabresd build (same i.MX6Q Cortex-A9 core)
+```bash
+cd ~/imx6-yocto/build/tmp-glibc/deploy/images/imx6qdlsabresd
+
+# Decompress the WIC SD card image (only needed once)
+gunzip -k core-image-minimal-imx6qdlsabresd.rootfs.wic.gz
+
+# Boot — serial console, no display window
+# Note: rootfs is on partition 2 (mmcblk0p2) inside the WIC image
 qemu-system-arm \
   -M sabrelite \
   -m 1G \
   -kernel zImage \
   -dtb imx6q-sabresd.dtb \
-  -drive file=rootfs.img,format=raw,id=sd,if=none \
+  -drive file=core-image-minimal-imx6qdlsabresd.rootfs.wic,format=raw,id=sd,if=none \
   -device sdhci-pci,id=sdhci \
   -device sd-card,drive=sd \
-  -append "console=ttymxc0,115200 root=/dev/mmcblk0 rootwait rw" \
+  -append "console=ttymxc0,115200 root=/dev/mmcblk0p2 rootwait rw" \
   -serial stdio \
   -nographic \
   -net nic,model=virtio \
@@ -244,10 +252,10 @@ qemu-system-arm \
   -m 1G \
   -kernel zImage \
   -dtb imx6q-sabresd.dtb \
-  -drive file=rootfs.img,format=raw,id=sd,if=none \
+  -drive file=core-image-minimal-imx6qdlsabresd.rootfs.wic,format=raw,id=sd,if=none \
   -device sdhci-pci,id=sdhci \
   -device sd-card,drive=sd \
-  -append "console=ttymxc0,115200 root=/dev/mmcblk0 rootwait rw" \
+  -append "console=ttymxc0,115200 root=/dev/mmcblk0p2 rootwait rw" \
   -serial stdio \
   -nographic \
   -net nic,model=virtio \
@@ -306,6 +314,7 @@ bitbake-layers find-recipes <recipe-name>
 | WSL2 networking slow downloads | Set `BB_NO_NETWORK = "0"` and check WSL DNS (`/etc/resolv.conf`) |
 | `MACHINE=imx6qsabrelite is invalid` | Machine was removed in scarthgap — use `imx6qdlsabresd` instead |
 | `Nothing RPROVIDES 'openssh-server'` | Wrong package name — use `openssh-sshd` in `IMAGE_INSTALL` |
+| Images not found in `tmp/` | Yocto with glibc puts output in `tmp-glibc/` not `tmp/` |
 
 ---
 
