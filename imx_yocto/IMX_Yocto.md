@@ -152,6 +152,9 @@ PARALLEL_MAKE = "-j16"
 
 INHERIT += "rm_work"
 
+# required — without this, Yocto locks the root account and login is impossible
+IMAGE_FEATURES += "debug-tweaks"
+
 # On-target dev tools and SSH — note: Yocto package is openssh-sshd, not openssh-server
 IMAGE_INSTALL:append = " gcc g++ binutils make python3 python3-modules openssh-sshd"
 ```
@@ -268,7 +271,7 @@ Once the board has booted (you see a login prompt on the serial console), open a
 ssh -p 2222 root@localhost
 ```
 
-> Root has no password by default (`debug-tweaks` is set). Press Enter when prompted.
+> Root has no password when `IMAGE_FEATURES += "debug-tweaks"` is set in `local.conf`. Press Enter when prompted for a password.
 
 ---
 
@@ -314,6 +317,7 @@ bitbake-layers find-recipes <recipe-name>
 | `MACHINE=imx6qsabrelite is invalid` | Machine was removed in scarthgap — use `imx6qdlsabresd` instead |
 | `Nothing RPROVIDES 'openssh-server'` | Wrong package name — use `openssh-sshd` in `IMAGE_INSTALL` |
 | Images not found in `tmp/` | Yocto with glibc puts output in `tmp-glibc/` not `tmp/` |
+| `root` login rejected / password not accepted | `debug-tweaks` missing from `local.conf` — add `IMAGE_FEATURES += "debug-tweaks"` and rebuild |
 
 ---
 
