@@ -1,6 +1,6 @@
 # Yocto for NXP i.MX6 Quad — QEMU Setup from Scratch
 
-Target: **i.MX6 Quad SABRE Lite** emulated with QEMU `sabrelite` machine  
+Target: **i.MX6 Quad SABRE SD** (`imx6qdlsabresd`) emulated with QEMU `sabrelite` machine (same Cortex-A9 CPU)  
 Yocto Release: **Scarthgap 5.0 LTS**  
 Host: WSL2 Ubuntu 22.04
 
@@ -136,8 +136,8 @@ bitbake-layers show-layers
 Edit `$IMX_YOCTO_BASE/build/conf/local.conf` — add/change these key lines:
 
 ```bash
-# Target machine — i.MX6 Quad SABRE Lite (matches QEMU 'sabrelite' machine)
-MACHINE = "imx6qsabrelite"
+# imx6qsabrelite was removed from meta-freescale scarthgap; imx6qdlsabresd is the same i.MX6 Quad Cortex-A9
+MACHINE = "imx6qdlsabresd"
 
 # Accept NXP EULA (required to build any i.MX recipe)
 ACCEPT_FSL_EULA = "1"
