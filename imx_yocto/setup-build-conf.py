@@ -34,7 +34,8 @@ PARALLEL_MAKE = "-j16"
 INHERIT += "rm_work"
 
 IMAGE_INSTALL:append = " gcc g++ binutils make python3 python3-modules openssh-sshd"
-"""
+# cpio.gz lets us boot as initramfs — no block device needed in QEMU
+IMAGE_FSTYPES:append = \" cpio.gz\""""
 
 def write(path, content, label):
     path.write_text(content)
