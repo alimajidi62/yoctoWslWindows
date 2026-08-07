@@ -10,7 +10,8 @@ KERNEL = DEPLOY / "zImage"
 DTB    = DEPLOY / "imx6q-sabresd.dtb"
 INITRD = DEPLOY / "core-image-minimal-imx6qdlsabresd.rootfs.cpio.gz"
 
-SSH_PORT = 2222
+SSH_PORT    = 2222
+MONITOR_SOCK = "/tmp/qemu-monitor.sock"
 
 
 def check_files():
@@ -40,11 +41,13 @@ def boot(ssh=False):
         "-initrd", str(initrd_path),
         "-append", "console=ttymxc0,115200 root=/dev/ram rw",
         "-nographic",
+        "-monitor", f"unix:{MONITOR_SOCK},server,nowait",
         "-net", "nic,model=virtio",
         "-net", net_args,
     ]
     if ssh:
         print(f"[INFO] SSH forwarding on: ssh -p {SSH_PORT} root@localhost")
+    print(f"[INFO] QEMU monitor socket: socat - UNIX-CONNECT:{MONITOR_SOCK}")
     print("[INFO] Exit QEMU with: Ctrl+A then X\n")
     print("Running:", " ".join(cmd), "\n")
     os.execvp("qemu-system-arm", cmd)
